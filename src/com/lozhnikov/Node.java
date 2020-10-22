@@ -10,7 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class Node {
     private String name;
     private int lossPercentage;
-    private List<Neighbour> neighbours;
+    private Set<Neighbour> neighbours;
     private DatagramSocket socket;
     private Set<UUID> messageHistory;
     private Map<UUID, Message> messageUid;
@@ -29,11 +29,11 @@ public class Node {
     void init(String name, int port, int lossPercentage) throws SocketException {
         this.name = name;
         this.lossPercentage = lossPercentage;
-        neighbours = Collections.synchronizedList(new LinkedList<>());
+        neighbours = Collections.newSetFromMap(new ConcurrentHashMap<>());
         socket = new DatagramSocket(port);
-        messageHistory = Collections.synchronizedSet(new HashSet<>());
-        messageQueue = Collections.synchronizedMap(new ConcurrentHashMap<>());
-        messageUid = Collections.synchronizedMap(new HashMap<>());
+        messageHistory = Collections.newSetFromMap(new ConcurrentHashMap<>());
+        messageQueue = new ConcurrentHashMap<>();
+        messageUid = new ConcurrentHashMap<>();
     }
 
     void addNeighbour(Neighbour neighbour) {
@@ -83,8 +83,8 @@ public class Node {
     }
 
     public void addMessageToQueue(Message message, Neighbour sender) {
-        messageQueue.put(message.getUid(), Collections.synchronizedSet(new HashSet<>()));
         messageUid.put(message.getUid(), message);
+        messageQueue.put(message.getUid(), Collections.newSetFromMap(new ConcurrentHashMap<>()));
         for (Neighbour neighbour : neighbours) {
             if (neighbour.equals(sender)) continue;
             messageQueue.get(message.getUid()).add(neighbour);
