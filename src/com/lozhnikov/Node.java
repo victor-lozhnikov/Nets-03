@@ -9,7 +9,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class Node {
     private String name;
-    private int port;
     private int lossPercentage;
     private List<Neighbour> neighbours;
     private DatagramSocket socket;
@@ -29,7 +28,6 @@ public class Node {
 
     void init(String name, int port, int lossPercentage) throws SocketException {
         this.name = name;
-        this.port = port;
         this.lossPercentage = lossPercentage;
         neighbours = Collections.synchronizedList(new LinkedList<>());
         socket = new DatagramSocket(port);
@@ -68,8 +66,8 @@ public class Node {
         return socket;
     }
 
-    public List<Neighbour> getNeighbours() {
-        return neighbours;
+    public int getLossPercentage() {
+        return lossPercentage;
     }
 
     public Map<UUID, Set<Neighbour>> getMessageQueue() {

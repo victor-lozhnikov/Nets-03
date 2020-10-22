@@ -4,6 +4,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.nio.ByteBuffer;
+import java.util.Random;
 import java.util.UUID;
 
 public class Receiver implements Runnable {
@@ -66,6 +67,10 @@ public class Receiver implements Runnable {
                         neighbour = node.findNeighbourByAddress(packet.getAddress(), packet.getPort());
 
                         if (codeMessage[0] == 2 && !node.hasMessageUid(message.getUid())) {
+
+                            int random = (new Random()).nextInt(99);
+                            if (random < node.getLossPercentage()) continue;
+
                             node.addMessageToQueue(message, neighbour);
                             node.addMessageUid(message.getUid());
                             byte[] acceptBuffer = message.toByteArray(true);
