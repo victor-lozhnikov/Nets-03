@@ -37,6 +37,7 @@ public class Node {
     }
 
     void addNeighbour(Neighbour neighbour) {
+        neighbour.setLastReceivedPing(System.currentTimeMillis());
         neighbours.add(neighbour);
         System.out.println("New neighbour: " + neighbour.getName());
     }
@@ -47,14 +48,13 @@ public class Node {
         byte[] codeMessage = {accept ? (byte) 1 : (byte) 0};
         byteOut.write(codeMessage);
         byte[] nameLengthBuffer = ByteBuffer.allocate(2).putShort(
-                (short) name.length()).array();
+                (short) name.getBytes().length).array();
         byteOut.write(nameLengthBuffer);
         byte[] nameBuffer = name.getBytes();
         byteOut.write(nameBuffer);
-        byte[] rubbish = new byte[4096 - 3 - 2 * name.length()];
-        byteOut.write(rubbish);
         byte[] message = byteOut.toByteArray();
-        packet = new DatagramPacket(message, 4096, inetAddress, port);
+        byteOut.close();
+        packet = new DatagramPacket(message, message.length, inetAddress, port);
         socket.send(packet);
     }
 
@@ -72,6 +72,10 @@ public class Node {
 
     public Map<UUID, Set<Neighbour>> getMessageQueue() {
         return messageQueue;
+    }
+
+    public Set<Neighbour> getNeighbours() {
+        return neighbours;
     }
 
     public void addMessageUid (UUID uid) {
@@ -106,5 +110,9 @@ public class Node {
             }
         }
         return null;
+    }
+
+    public void removeNeighbour(Neighbour neighbour) {
+        neighbours.remove(neighbour);
     }
 }

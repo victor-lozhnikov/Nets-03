@@ -37,18 +37,16 @@ public class Message {
         byte[] uidBuffer2 = ByteBuffer.allocate(8).putLong(uid.getLeastSignificantBits()).array();
         byteOut.write(uidBuffer2);
         byte[] senderLengthBuffer = ByteBuffer.allocate(2).putShort(
-                (short) sender.length()).array();
+                (short) sender.getBytes().length).array();
         byteOut.write(senderLengthBuffer);
         byte[] senderBuffer = sender.getBytes();
         byteOut.write(senderBuffer);
         byte[] messageLengthBuffer = ByteBuffer.allocate(2).putShort(
-                (short) message.length()).array();
+                (short) message.getBytes().length).array();
         byteOut.write(messageLengthBuffer);
         byte[] messageBuffer = message.getBytes();
         byteOut.write(messageBuffer);
-        byte[] rubbish = new byte[4096 - 1 - 16 -
-                2 - 2 * sender.length() - 2 - 2 * message.length()];
-        byteOut.write(rubbish);
+        byteOut.close();
         return byteOut.toByteArray();
     }
 }

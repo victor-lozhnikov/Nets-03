@@ -34,10 +34,12 @@ public class Main {
 
             Thread console_thread = new Thread(new ConsoleReader(node));
             console_thread.start();
-            Thread sender_thread = new Thread(new Sender(node));
+            Thread sender_thread = new Thread(new MessageSender(node));
             sender_thread.start();
-            Thread receiver_thread = new Thread(new Receiver(node));
+            Thread receiver_thread = new Thread(new Transmitter(node));
             receiver_thread.start();
+            Thread pinger_thread = new Thread(new Pinger(node));
+            pinger_thread.start();
         }
         catch (IOException ex) {
             System.out.println("Can't create node");

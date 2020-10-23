@@ -6,11 +6,12 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.UUID;
 
-public class Sender implements Runnable {
+public class MessageSender implements Runnable {
 
     Node node;
+    long TIMEOUT = 3000;
 
-    public Sender(Node node) {
+    public MessageSender(Node node) {
         this.node = node;
     }
 
@@ -21,14 +22,18 @@ public class Sender implements Runnable {
             for (UUID messageUid : node.getMessageQueue().keySet()) {
                 Message message = node.getMessageFromUid(messageUid);
                 for (Neighbour neighbour : node.getMessageQueue().get(messageUid)) {
+                    if (System.currentTimeMillis() - neighbour.getLastSentMessageTime(messageUid) < TIMEOUT) {
+                        continue;
+                    }
                     try {
                         byte[] messageBuffer = message.toByteArray(false);
                         packet = new DatagramPacket(messageBuffer, messageBuffer.length,
                                 neighbour.getInetAddress(), neighbour.getPort());
                         node.getSocket().send(packet);
+                        neighbour.addSentMessageTime(messageUid, System.currentTimeMillis());
                         System.out.println("Message '" + message.getMessage() + "' sent to " + neighbour.getName());
-                        Thread.sleep(1000);
-                    } catch (IOException | InterruptedException ex) {
+                        //Thread.sleep(1000);
+                    } catch (IOException ex) {
                         System.out.println("Can't send message");
                     }
 
