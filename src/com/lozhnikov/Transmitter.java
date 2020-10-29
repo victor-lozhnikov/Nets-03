@@ -3,6 +3,7 @@ package com.lozhnikov;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.DatagramPacket;
+import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.util.Random;
 import java.util.UUID;
@@ -32,8 +33,32 @@ public class Transmitter implements Runnable {
                         byteIn.read(nameLengthBuffer);
                         byte[] nameBuffer = new byte[ByteBuffer.wrap(nameLengthBuffer).getShort()];
                         byteIn.read(nameBuffer);
+
                         neighbour = new Neighbour(new String(nameBuffer),
                                 packet.getAddress(), packet.getPort());
+
+                        byte[] alternateNameLengthBuffer = new byte[2];
+                        byteIn.read(alternateNameLengthBuffer);
+                        if (ByteBuffer.wrap(alternateNameLengthBuffer).getShort() != 0) {
+                            byte[] alternateNameBuffer = new byte[ByteBuffer.wrap(alternateNameLengthBuffer).getShort()];
+                            byteIn.read(alternateNameBuffer);
+                            byte[] alternateAddressLengthBuffer = new byte[1];
+                            byteIn.read(alternateAddressLengthBuffer);
+                            byte[] alternateAddressBuffer = new byte[alternateAddressLengthBuffer[0]];
+                            byteIn.read(alternateAddressBuffer);
+                            byte[] alternatePortBuffer = new byte[4];
+                            byteIn.read(alternatePortBuffer);
+                            neighbour.setAlternate(
+                                    new Neighbour(new String(alternateNameBuffer),
+                                            InetAddress.getByAddress(alternateAddressBuffer),
+                                            ByteBuffer.wrap(alternatePortBuffer).getInt())
+                            );
+                        }
+                        else {
+                            neighbour.setAlternate(new Neighbour(node.getName(),
+                                    InetAddress.getLoopbackAddress(),
+                                    node.getPort()));
+                        }
                         node.addNeighbour(neighbour);
                         if (codeMessage[0] == 0) {
                             node.sendGreeting(neighbour.getInetAddress(), neighbour.getPort(), true);
@@ -87,6 +112,26 @@ public class Transmitter implements Runnable {
                         neighbour = node.findNeighbourByAddress(packet.getAddress(), packet.getPort());
                         if (neighbour == null) continue;
                         neighbour.setLastReceivedPing(System.currentTimeMillis());
+                    }
+                    case 5 -> {
+                        byte[] alternateNameLengthBuffer = new byte[2];
+                        byteIn.read(alternateNameLengthBuffer);
+                        byte[] alternateNameBuffer = new byte[ByteBuffer.wrap(alternateNameLengthBuffer).getShort()];
+                        byteIn.read(alternateNameBuffer);
+                        byte[] alternateAddressLengthBuffer = new byte[1];
+                        byteIn.read(alternateAddressLengthBuffer);
+                        byte[] alternateAddressBuffer = new byte[alternateAddressLengthBuffer[0]];
+                        byteIn.read(alternateAddressBuffer);
+                        byte[] alternatePortBuffer = new byte[4];
+                        byteIn.read(alternatePortBuffer);
+                        neighbour = node.findNeighbourByAddress(packet.getAddress(), packet.getPort());
+                        neighbour.setAlternate(
+                                new Neighbour(new String(alternateNameBuffer),
+                                        InetAddress.getByAddress(alternateAddressBuffer),
+                                        ByteBuffer.wrap(alternatePortBuffer).getInt())
+                        );
+                        System.out.println("Alternate of " + neighbour.getName() + " changed. New alternate: " +
+                                neighbour.getAlternate().getName());
                     }
                 }
                 byteIn.close();

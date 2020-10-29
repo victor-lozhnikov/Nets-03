@@ -1,7 +1,6 @@
 package com.lozhnikov;
 
 import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
@@ -15,6 +14,7 @@ public class Neighbour {
     private final Map<UUID, Long> lastMessageSent;
     private Long lastReceivedPing = 0L;
     private Long lastSentPing = 0L;
+    private Neighbour alternate;
 
     public Neighbour(String name, InetAddress inetAddress, int port) {
         this.name = name;
@@ -45,11 +45,6 @@ public class Neighbour {
                 Objects.equals(inetAddress, neighbour.inetAddress);
     }
 
-    @Override
-    public int hashCode() {
-        return Objects.hash(name, port, inetAddress);
-    }
-
     public void addSentMessageTime(UUID uid, Long time) {
         lastMessageSent.put(uid, time);
     }
@@ -75,5 +70,13 @@ public class Neighbour {
 
     public void setLastSentPing(Long lastSentPing) {
         this.lastSentPing = lastSentPing;
+    }
+
+    public Neighbour getAlternate() {
+        return alternate;
+    }
+
+    public void setAlternate(Neighbour alternate) {
+        this.alternate = alternate;
     }
 }

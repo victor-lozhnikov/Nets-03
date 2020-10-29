@@ -10,11 +10,13 @@ import java.util.concurrent.ConcurrentHashMap;
 public class Node {
     private String name;
     private int lossPercentage;
+    private int port;
     private Set<Neighbour> neighbours;
     private DatagramSocket socket;
     private Set<UUID> messageHistory;
     private Map<UUID, Message> messageUid;
     private Map<UUID, Set<Neighbour>> messageQueue;
+    private Neighbour alternate;
 
     public Node (String name, int port, int lossPercentage) throws SocketException {
         init(name, port, lossPercentage);
@@ -29,6 +31,7 @@ public class Node {
     void init(String name, int port, int lossPercentage) throws SocketException {
         this.name = name;
         this.lossPercentage = lossPercentage;
+        this.port = port;
         neighbours = Collections.newSetFromMap(new ConcurrentHashMap<>());
         socket = new DatagramSocket(port);
         messageHistory = Collections.newSetFromMap(new ConcurrentHashMap<>());
@@ -38,8 +41,18 @@ public class Node {
 
     void addNeighbour(Neighbour neighbour) {
         neighbour.setLastReceivedPing(System.currentTimeMillis());
-        neighbours.add(neighbour);
-        System.out.println("New neighbour: " + neighbour.getName());
+        if (neighbours.isEmpty()) {
+            alternate = neighbour;
+            neighbours.add(neighbour);
+        }
+        else {
+            neighbours.add(neighbour);
+        }
+        System.out.println("New neighbour: " + neighbour.getName() + ", alternate: " +
+                neighbour.getAlternate().getName() + " " +
+                neighbour.getAlternate().getInetAddress().getHostAddress() + " " +
+                neighbour.getAlternate().getPort()
+        );
     }
 
     void sendGreeting(InetAddress inetAddress, int port, boolean accept) throws IOException {
@@ -52,10 +65,64 @@ public class Node {
         byteOut.write(nameLengthBuffer);
         byte[] nameBuffer = name.getBytes();
         byteOut.write(nameBuffer);
+        if (alternate == null) {
+            byteOut.write(ByteBuffer.allocate(2).putShort((short) 0).array());
+        }
+        else {
+            byte[] alternateNameLengthBuffer = ByteBuffer.allocate(2).putShort(
+                    (short) alternate.getName().getBytes().length).array();
+            byteOut.write(alternateNameLengthBuffer);
+            byte[] alternateNameBuffer = alternate.getName().getBytes();
+            byteOut.write(alternateNameBuffer);
+            byte[] alternateAddressLengthBuffer = ByteBuffer.allocate(1).put(
+                    (byte) alternate.getInetAddress().getAddress().length
+            ).array();
+            byteOut.write(alternateAddressLengthBuffer);
+            byte[] alternateAddressBuffer = alternate.getInetAddress().getAddress();
+            byteOut.write(alternateAddressBuffer);
+            byte[] alternatePortBuffer = ByteBuffer.allocate(4).putInt(alternate.getPort()).array();
+            byteOut.write(alternatePortBuffer);
+        }
         byte[] message = byteOut.toByteArray();
         byteOut.close();
         packet = new DatagramPacket(message, message.length, inetAddress, port);
         socket.send(packet);
+    }
+
+    void notifyNeighboursAboutNewAlternate() {
+        System.out.println("My new alternate: " + alternate.getName());
+        for (Neighbour neighbour : neighbours) {
+            try {
+                DatagramPacket packet;
+                ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
+                byte[] codeMessage = {(byte) 5};
+                byteOut.write(codeMessage);
+                byte[] alternateNameLengthBuffer = ByteBuffer.allocate(2).putShort(
+                        (short) alternate.getName().getBytes().length).array();
+                byteOut.write(alternateNameLengthBuffer);
+                byte[] alternateNameBuffer = alternate.getName().getBytes();
+                byteOut.write(alternateNameBuffer);
+                byte[] alternateAddressLengthBuffer = ByteBuffer.allocate(1).put(
+                        (byte) alternate.getInetAddress().getAddress().length
+                ).array();
+                byteOut.write(alternateAddressLengthBuffer);
+                byte[] alternateAddressBuffer = alternate.getInetAddress().getAddress();
+                byteOut.write(alternateAddressBuffer);
+                byte[] alternatePortBuffer = ByteBuffer.allocate(4).putInt(alternate.getPort()).array();
+                byteOut.write(alternatePortBuffer);
+                byte[] message = byteOut.toByteArray();
+                byteOut.close();
+                packet = new DatagramPacket(message, message.length, neighbour.getInetAddress(), neighbour.getPort());
+                socket.send(packet);
+            }
+            catch (IOException ex) {
+                System.out.println("Can't notify neighbour " + neighbour.getName() + " about new alternate");
+            }
+        }
+    }
+
+    public int getPort() {
+        return port;
     }
 
     public String getName() {
@@ -114,5 +181,13 @@ public class Node {
 
     public void removeNeighbour(Neighbour neighbour) {
         neighbours.remove(neighbour);
+    }
+
+    public Neighbour getAlternate() {
+        return alternate;
+    }
+
+    public void setAlternate(Neighbour alternate) {
+        this.alternate = alternate;
     }
 }
